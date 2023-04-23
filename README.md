@@ -9,7 +9,7 @@ https://user-images.githubusercontent.com/6422188/233815912-65c4a68e-57d0-4f51-8
 
 
 ## Use
-Outputs mp4 files to `~/recordings`. Optional name for first arg, defaults to `~/recordings/output.mp4`. Make sure `ffmpeg` is available in path.
+Outputs mp4 files to `~/recordings`. Optional name for first arg, defaults to `~/recordings/output.mp4`. Make sure `ffmpeg` is available in path and you're on Windows (TODO xplat).
 
 ### From repo
 ```

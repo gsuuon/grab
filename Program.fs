@@ -9,9 +9,7 @@ type ProcResult = {
   code : int
 }
 
-/// NOTE this will stall forever if proc waits for input with a message
-/// and may not show message (if it isn't newlined)
-let exec (cmd: string) handleOut handleErr =
+let exec handleOut handleErr (cmd: string) =
   let processStartInfo = new ProcessStartInfo()
 
   processStartInfo.FileName <- "cmd.exe"
@@ -42,12 +40,15 @@ let exec (cmd: string) handleOut handleErr =
     } |> Async.Start
 
     async {
-      use reader = proc.StandardOutput
-
       while not proc.HasExited do
         let line = Console.ReadLine()
         stdin.WriteLine(line)
+    } |> Async.Start
 
+    async {
+      use reader = proc.StandardOutput
+
+      while not proc.HasExited do
         if not reader.EndOfStream then
           let output = reader.ReadLine()
           outLines <- outLines @ [output]
@@ -57,8 +58,6 @@ let exec (cmd: string) handleOut handleErr =
 
   Console.CancelKeyPress.Add(fun e ->
     e.Cancel <- true
-    if not proc.HasExited then
-        proc.Kill()
   )
 
   proc.WaitForExit() |> ignore
@@ -70,8 +69,8 @@ let exec (cmd: string) handleOut handleErr =
   }
 
 // We're sending everything except output file to stderr so stdout is just the output file name
-let show cmd = exec cmd (eprintfn "%s") (eprintfn "%s")
-let hide cmd = exec cmd ignore ignore
+let show = exec (eprintfn "%s") (eprintfn "%s")
+let hide = exec ignore ignore
 
 let sleep ms = Threading.Thread.Sleep 1000
 

@@ -123,7 +123,7 @@ let duration = TimeSpan.Parse(matches.Groups[1].Value)
 
 let trimMs = 400
 let endtime = duration - TimeSpan.FromMilliseconds(trimMs)
-eprintfn $"Trimming end, was {duration} now {endtime}"
+eprintfn $"Trimming end by {trimMs}ms"
 
 ignore <| hide $"""ffmpeg -i {tmpFilePath} -to {endtime} -y -c copy {outputFilePath}""" 
 

@@ -24,4 +24,9 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Gsuuon.Command" Version="0.1.4" />
+    <PackageReference Include="Gsuuon.Command.Utility" Version="0.0.1" />
+  </ItemGroup>
+
 </Project>

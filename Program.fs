@@ -1,9 +1,11 @@
 open System
 open System.IO
 open System.Text.RegularExpressions
+open System.Drawing
 
 open Gsuuon.Command
 open Gsuuon.Command.Utility
+open Gsuuon.Console.Choose
 
 let run out err (p: Proc) =
     p <!> Stdout |> consume out
@@ -12,8 +14,9 @@ let run out err (p: Proc) =
     p |> wait |> ignore
 
 let hide = run ignore ignore
+let show = run (printfn "%s") (eprintfn "%s")
 
-setupConsole()
+setupConsole ()
 
 let outputDir =
     Path.Combine
@@ -35,32 +38,79 @@ let tmpFilePath = Path.Combine [| outputDir; "__raw_last_recording.mp4" |]
 
 Directory.CreateDirectory outputDir |> ignore
 
-eprintfn "Recording in 3.."
-sleep 1000
-eprintfn "2.."
-sleep 1000
-eprintfn "1.."
-sleep 1000
-eprintfn "🎬 (ctrl-c to stop)"
+// ffmpeg cli command to get available audio sources on windows
+// ffmpeg -list_devices true -f dshow -i dummy
 
-proc
-    "ffmpeg"
-    $"""-f gdigrab -framerate 30 -i desktop -filter_complex "scale=-2:800:flags=lanczos" -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -movflags +faststart -y {tmpFilePath}"""
-|> hide
+// ffmpeg cli command to record desktop and audio on windows
+// ffmpeg -f gdigrab -framerate 30 -i desktop -f dshow -i audio="virtual-audio-capturer" output.mp4
 
-eprintfn "✂️"
+let dshowDevices =
+    proc "ffmpeg" "-list_devices true -f dshow -i dummy" |> wait <!> Stderr
+    |> readBlock
+    |> fun s -> s.Split "\n"
+    |> Array.choose (fun l ->
+        // slogn [bg Color.Red] l
+        let m = Regex.Match(l, """dshow.+] "(?<name>.+)" \((?<type>.+)\)""")
 
-let fflog = proc "ffmpeg" $"-i {tmpFilePath}" |> wait <!> Stderr |> readBlock
+        if m.Success then
+            let name = m.Groups["name"].Value
+            let typ = m.Groups["type"].Value
 
-let matches = Regex.Match(fflog, ".+Duration: ([0-9:.]+)")
+            Some {|
+                name = name
+                ``type`` = typ
+            |}
 
-let duration = TimeSpan.Parse(matches.Groups[1].Value)
+        else
+            None
+    )
 
-let trimMs = 1000
-let endtime = duration - TimeSpan.FromMilliseconds(trimMs)
-eprintfn $"Trimming last {trimMs}ms"
+let doRecord audioIn =
+    eprintfn "Recording in 3.."
+    sleep 1000
 
-proc "ffmpeg" $"-i {tmpFilePath} -to {endtime} -y -c copy {outputFilePath}"
-|> hide
+    eprintfn "2.."
+    sleep 1000
+    eprintfn "1.."
+    sleep 1000
+    eprintfn "🎬 (ctrl-c to stop)"
 
-printfn "%s" outputFilePath
+    proc
+        "ffmpeg"
+        ("-f gdigrab -framerate 30 -i desktop "
+        + ( match audioIn with
+            | Some source -> $"""-f dshow -i audio="{source}" """
+            | _ -> ""
+          )
+        + """-filter_complex "scale=-2:800:flags=lanczos" -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -movflags +faststart -y """
+        + tmpFilePath
+        )
+    |> hide
+
+    eprintfn "✂️"
+
+    let fflog = proc "ffmpeg" $"-i {tmpFilePath}" |> wait <!> Stderr |> readBlock
+
+    let matches = Regex.Match(fflog, ".+Duration: ([0-9:.]+)")
+
+    let duration = TimeSpan.Parse(matches.Groups[1].Value)
+
+    let trimMs = 1000
+    let endtime = duration - TimeSpan.FromMilliseconds(trimMs)
+    eprintfn $"Trimming last {trimMs}ms"
+
+    proc "ffmpeg" $"-i {tmpFilePath} -to {endtime} -y -c copy {outputFilePath}"
+    |> hide
+
+    printfn "%s" outputFilePath
+
+dshowDevices
+|> Array.choose (fun x ->
+    if x.``type`` = "audio" then
+        Some x.name
+    else
+        None
+)
+|> Array.toList
+|> choose "Choose audio input (esc or ctrl-c for none):\n" 0
+|> doRecord

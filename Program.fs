@@ -132,11 +132,11 @@ let doRecord videoRegion audioIn =
 
     printfn "%s" outputFilePath
 
-let videoRegion =
+let selectVideoRegion () =
     wmicDisplayResolutions
     |> choose "Pick a region to capture or esc for entire desktop" 0
 
-let audioIn =
+let selectAudioIn () =
     dshowDevicesAudio
     |> Array.choose (fun x ->
         if x.``type`` = "audio" then
@@ -147,9 +147,39 @@ let audioIn =
     |> Array.toList
     |> choose "Choose audio input (esc or ctrl-c for none):\n" 0
 
+open Argu
+
+type CLIArgs =
+    | [<AltCommandLine("-r")>]``Video-Region``
+    | [<AltCommandLine("-a")>]``Audio-In``
+    interface IArgParserTemplate with
+        member s.Usage =
+            match s with
+            | ``Video-Region`` -> "Pick a video region to record"
+            | ``Audio-In`` -> "Add an audio source"
+
+let parser = ArgumentParser.Create<CLIArgs>()
+let results = parser.ParseCommandLine(raiseOnUsage=false)
+
+if results.IsUsageRequested then printfn "%s" <| parser.PrintUsage() else
+
+let videoRegion =
+    if results.Contains ``Video-Region`` then
+        selectVideoRegion ()
+    else
+        None
+
+let audioIn =
+    if results.Contains ``Audio-In`` then
+        selectAudioIn ()
+    else
+        None
+
 eprintfn "Region: %A" videoRegion
 eprintfn "Audio: %A" audioIn
 
 match choose "Ready to record" 0 [ "Start" ] with
-| Some _ -> doRecord videoRegion audioIn
-| None -> eprintfn "Ok, nevermind"
+| Some _ ->
+    doRecord videoRegion audioIn
+| None ->
+    eprintfn "Ok, nevermind"

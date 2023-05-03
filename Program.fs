@@ -1,7 +1,6 @@
 open System
 open System.IO
 open System.Text.RegularExpressions
-open System.Drawing
 
 open Gsuuon.Command
 open Gsuuon.Command.Utility
@@ -46,12 +45,6 @@ let tmpFilePath = Path.Combine [| outputDir; "__raw_last_recording.mp4" |]
 
 Directory.CreateDirectory outputDir |> ignore
 
-// ffmpeg cli command to get available audio sources on windows
-// ffmpeg -list_devices true -f dshow -i dummy
-
-// ffmpeg cli command to record desktop and audio on windows
-// ffmpeg -f gdigrab -framerate 30 -i desktop -f dshow -i audio="virtual-audio-capturer" output.mp4
-
 let lines (x: string) = x.Split "\n"
 
 let dshowDevicesAudio =
@@ -59,7 +52,6 @@ let dshowDevicesAudio =
     |> readBlock
     |> lines
     |> Array.choose (fun l ->
-        // slogn [bg Color.Red] l
         let m = Regex.Match(l, """dshow.+] "(?<name>.+)" \((?<type>.+)\)""")
 
         if m.Success then

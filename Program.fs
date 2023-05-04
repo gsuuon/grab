@@ -21,10 +21,7 @@ let exec =
 
 setupConsole ()
 
-type Region = {
-    width : int
-    height : int
-}
+type Region = { width: int; height: int }
 
 let lines (x: string) = x.Split "\n"
 
@@ -39,16 +36,10 @@ let dshowDevicesAudio =
             let name = m.Groups["name"].Value
             let typ = m.Groups["type"].Value
 
-            Some {|
-                name = name
-                ``type`` = typ
-            |}
+            Some {| name = name; ``type`` = typ |}
 
         else
-            None
-    )
-
-
+            None)
 
 type ExecOptions =
     { outputFile: string
@@ -118,28 +109,25 @@ let doRecord (options: ExecOptions) =
 
 let selectVideoRegion () =
     proc "wmic" "path Win32_VideoController get CurrentHorizontalResolution,CurrentVerticalResolution"
-    |> wait <!> Stdout |> readBlock |> lines
+    |> wait
+    <!> Stdout
+    |> readBlock
+    |> lines
     |> Array.choose (fun x ->
-            let m = Regex.Match(x, "(?<width>\d+)\s+(?<height>\d+)")
-            if m.Success then
-                Some {
-                    width = Int32.Parse m.Groups["width"].Value
-                    height = Int32.Parse m.Groups["height"].Value
-                }
-            else
-                None
-       )
+        let m = Regex.Match(x, "(?<width>\d+)\s+(?<height>\d+)")
+
+        if m.Success then
+            Some
+                { width = Int32.Parse m.Groups["width"].Value
+                  height = Int32.Parse m.Groups["height"].Value }
+        else
+            None)
     |> Array.toList
     |> choose "Pick a region to capture or esc for entire desktop" 0
 
 let selectAudioIn () =
     dshowDevicesAudio
-    |> Array.choose (fun x ->
-        if x.``type`` = "audio" then
-            Some x.name
-        else
-            None
-    )
+    |> Array.choose (fun x -> if x.``type`` = "audio" then Some x.name else None)
     |> Array.toList
     |> choose "Choose audio input (esc or ctrl-c for none):\n" 0
 

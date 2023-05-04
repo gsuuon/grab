@@ -12,17 +12,12 @@ let run out err (p: Proc) =
     p <!> Stderr |> consume err
     p |> wait |> ignore
 
-let hide = run ignore ignore
-let show = run (printf "%s") (eprintf "%s")
-
-let debugMode =
-    if Environment.GetEnvironmentVariable "DEBUG" = "true" then
-        printfn "Debug mode"
-        true
-    else
-        false
-
-let exec = if debugMode then show else hide
+let exec =
+#if DEBUG
+    run (printf "%s") (eprintf "%s") 
+#else
+    run ignore ignore
+#endif
 
 setupConsole ()
 

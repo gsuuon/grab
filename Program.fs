@@ -55,20 +55,20 @@ let dshowDevicesAudio =
 
 
 
-let outputDir =
-    Path.Combine
-        [| Environment.GetFolderPath Environment.SpecialFolder.UserProfile
-           "recordings" |]
+type ExecOptions =
+    { outputFile: string
+      outputDir: string
+      videoRegion: Region option
+      audioIn: string option }
 
-
-
-let doRecord videoRegion audioIn outputDir outputFile =
-    Directory.CreateDirectory outputDir |> ignore
+let doRecord (options: ExecOptions) =
+    Directory.CreateDirectory options.outputDir |> ignore
 
     // We write a temporary recording so we can trim it
-    let tmpFilePath = Path.Combine [| outputDir; "__raw_last_recording.mp4" |]
+    let tmpFilePath = Path.Combine [| options.outputDir; "__raw_last_recording.mp4" |]
+
     let outputFilePath =
-        let path = Path.Combine [| outputDir; outputFile |]
+        let path = Path.Combine [| options.outputDir; options.outputFile |]
         // TODO I'm assuming the preset requires mp4 so we do this to avoid
         // having to add mp4 to filename will want to change this if we
         // allow configuring output filetype
@@ -84,26 +84,23 @@ let doRecord videoRegion audioIn outputDir outputFile =
     eprintfn "🎬 (ctrl-c to stop)"
 
     ffmpeg
-        [
-            Gdigrab {
-                framerate = 30
-                frame = 
-                    match videoRegion with
-                    | Some region -> Region {
-                            offsetX = 0
+        [ Gdigrab
+              { framerate = 30
+                frame =
+                  match options.videoRegion with
+                  | Some region ->
+                      Region
+                          { offsetX = 0
                             offsetY = 0
                             width = region.width
-                            height = region.height
-                        }
-                    | None -> Desktop
-            }
+                            height = region.height }
+                  | None -> Desktop }
 
-            match audioIn with
-            | Some source -> Dshow (Audio source)
-            | None -> ()
+          match options.audioIn with
+          | Some source -> Dshow(Audio source)
+          | None -> ()
 
-            RawArg Preset.Gdigrab.small
-        ]
+          RawArg Preset.Gdigrab.small ]
         tmpFilePath
     |> exec
 
@@ -151,57 +148,62 @@ let selectAudioIn () =
     |> Array.toList
     |> choose "Choose audio input (esc or ctrl-c for none):\n" 0
 
-open Argu
+type CLIArg =
+    | AudioIn
+    | VideoRegin
+    | OutputDir of path: string
+    | OutputFile of name: string
+    | Help
 
-type CLIArgs =
-    | [<AltCommandLine("-r")>]``Video-Region``
-    | [<AltCommandLine("-a")>]``Audio-In``
-    | [<AltCommandLine("-d")>]``Output-Dir`` of path: string option
-    | [<MainCommand; ExactlyOnce; Last>] ``Output-File`` of filename: string
-    interface IArgParserTemplate with
-        member s.Usage =
-            match s with
-            | ``Video-Region`` -> "Pick a video region to record"
-            | ``Audio-In`` -> "Add an audio source"
-            | ``Output-Dir`` _ -> "Output directory, defaults to ~/recordings"
-            | ``Output-File`` _ -> "Output mp4 filename, defaults to `output`"
+let rec parseArgs args parsed =
+    match args with
+    | [] -> parsed
+    | "-h" :: rest
+    | "--help" :: rest -> [ Help ]
+    | "-a" :: rest -> parseArgs rest (AudioIn :: parsed)
+    | "-v" :: rest -> parseArgs rest (VideoRegin :: parsed)
+    | "-va" :: rest
+    | "-av" :: rest -> parseArgs rest ([ AudioIn; VideoRegin ] @ parsed)
+    | "-d" :: path :: rest -> parseArgs rest (OutputDir path :: parsed)
+    | [ name ] -> parseArgs [] (OutputFile name :: parsed)
+    | head :: rest ->
+        eprintfn $"Ignoring unrecognized option: {head}"
+        parseArgs rest parsed
 
-let parser = ArgumentParser.Create<CLIArgs>()
-let results = parser.ParseCommandLine(raiseOnUsage=false)
+let help =
+    """USAGE: grab [-d <path>] [-a] [-v] [<file>]
 
-if results.IsUsageRequested then printfn "%s" <| parser.PrintUsage() else
+OUTPUT:
+    [<file>]          set output filename (defaults to 'output')
 
-let videoRegion =
-    if results.Contains ``Video-Region`` then
-        selectVideoRegion ()
-    else
-        None
+OPTIONS:
+    -d                set output directory
+    -a                pick an audio source
+    -v                pick a video region
+"""
 
-let audioIn =
-    if results.Contains ``Audio-In`` then
-        selectAudioIn ()
-    else
-        None
+let buildOptions args =
+    List.fold
+        (fun opts arg ->
+            match arg with
+            | AudioIn -> { opts with audioIn = selectAudioIn () }
+            | VideoRegin ->
+                { opts with
+                    videoRegion = selectVideoRegion () }
+            | OutputDir path -> { opts with outputDir = path }
+            | OutputFile name -> { opts with outputFile = name }
+            | Help ->
+                eprintfn "%s" help
+                exit 0)
+        { outputFile = "output.mp4"
+          outputDir =
+            Path.Combine
+                [| Environment.GetFolderPath Environment.SpecialFolder.UserProfile
+                   "recordings" |]
+          videoRegion = None
+          audioIn = None }
+        args
 
-let outputDir =
-    match results.TryGetResult ``Output-Dir`` with
-    | Some (Some dir) -> dir
-    | _ -> 
-        Path.Combine [|
-            Environment.GetFolderPath Environment.SpecialFolder.UserProfile
-            "recordings"
-        |]
+let cliArgs = Environment.GetCommandLineArgs() |> Array.toList |> List.tail
 
-let outputFile =
-    match results.TryGetResult ``Output-File`` with
-    | Some name when name <> "" -> name
-    | _ -> "output"
-
-eprintfn "Region: %A" videoRegion
-eprintfn "Audio: %A" audioIn
-
-match choose "Ready to record" 0 [ "Start" ] with
-| Some _ ->
-    doRecord videoRegion audioIn outputDir outputFile
-| None ->
-    eprintfn "Ok, nevermind"
+parseArgs cliArgs [] |> buildOptions |> doRecord

@@ -18,7 +18,7 @@ dotnet run -- my_recording
 
 ### From nuget
 ```
-dotnet tool install --global grab
+dotnet tool install --global Gsuuon.Tool.Grab
 grab my_recording
 ```
 

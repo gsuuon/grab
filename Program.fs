@@ -70,7 +70,8 @@ let doRecord (options: ExecOptions) =
     eprintfn "🎬 (ctrl-c to stop)"
 
     ffmpeg
-        [ Gdigrab
+        [ Nostdin
+          Gdigrab
               { framerate = 30
                 frame =
                   match options.videoRegion with

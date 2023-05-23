@@ -133,7 +133,7 @@ let selectAudioIn () =
 
 type CLIArg =
     | AudioIn
-    | VideoRegin
+    | VideoRegion
     | OutputDir of path: string
     | OutputFile of name: string
     | Help
@@ -144,9 +144,9 @@ let rec parseArgs args parsed =
     | "-h" :: rest
     | "--help" :: rest -> [ Help ]
     | "-a" :: rest -> parseArgs rest (AudioIn :: parsed)
-    | "-v" :: rest -> parseArgs rest (VideoRegin :: parsed)
+    | "-v" :: rest -> parseArgs rest (VideoRegion :: parsed)
     | "-va" :: rest
-    | "-av" :: rest -> parseArgs rest ([ AudioIn; VideoRegin ] @ parsed)
+    | "-av" :: rest -> parseArgs rest ([ AudioIn; VideoRegion ] @ parsed)
     | "-d" :: path :: rest -> parseArgs rest (OutputDir path :: parsed)
     | [ name ] -> parseArgs [] (OutputFile name :: parsed)
     | head :: rest ->
@@ -170,7 +170,7 @@ let buildOptions args =
         (fun opts arg ->
             match arg with
             | AudioIn -> { opts with audioIn = selectAudioIn () }
-            | VideoRegin ->
+            | VideoRegion ->
                 { opts with
                     videoRegion = selectVideoRegion () }
             | OutputDir path -> { opts with outputDir = path }

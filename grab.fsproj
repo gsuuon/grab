@@ -29,7 +29,7 @@
     <PackageReference Include="Gsuuon.Command" Version="0.1.4" />
     <PackageReference Include="Gsuuon.Console" Version="0.1.4" />
     <PackageReference Include="Gsuuon.Command.Utility" Version="0.0.1" />
-    <PackageReference Include="Gsuuon.Program.Ffmpeg" Version="0.0.1" />
+    <PackageReference Include="Gsuuon.Program.Ffmpeg" Version="0.0.2" />
   </ItemGroup>
 
 </Project>

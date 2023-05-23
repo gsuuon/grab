@@ -1,0 +1,19 @@
+name: Publish nuget
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '*.fsproj'
+
+jobs:
+  pack-publish-nuget:
+    runs-on: ubuntu-latest
+    name: Pack and publish to nuget
+    steps:
+      - uses: actions/checkout@v3
+      - name: dotnet pack
+        run: dotnet pack -c release
+      - name: dotnet nuget push
+        run: dotnet nuget push nupkg/ -k ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

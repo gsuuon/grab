@@ -25,7 +25,7 @@ type Region = { width: int; height: int }
 
 let lines (x: string) = x.Split "\n"
 
-let dshowDevicesAudio =
+let dshowDevicesAudio () =
     proc "ffmpeg" "-list_devices true -f dshow -i dummy" |> wait <!> Stderr
     |> readBlock
     |> lines
@@ -131,7 +131,7 @@ let selectVideoRegion () =
     |> choose "Pick a region to capture or esc for entire desktop" 0
 
 let selectAudioIn () =
-    dshowDevicesAudio
+    dshowDevicesAudio()
     |> Array.choose (fun x -> if x.``type`` = "audio" then Some x.name else None)
     |> Array.toList
     |> choose "Choose audio input (esc or ctrl-c for none):\n" 0

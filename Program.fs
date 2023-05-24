@@ -45,7 +45,8 @@ type ExecOptions =
     { outputFile: string
       outputDir: string
       videoRegion: Region option
-      audioIn: string option }
+      audioIn: string option
+      trimLastSecond: bool }
 
 let doRecord (options: ExecOptions) =
     Directory.CreateDirectory options.outputDir |> ignore
@@ -138,6 +139,7 @@ type CLIArg =
     | OutputDir of path: string
     | OutputFile of name: string
     | Help
+    | NoTrim
 
 let rec parseArgs args parsed =
     match args with
@@ -149,6 +151,7 @@ let rec parseArgs args parsed =
     | "-va" :: rest
     | "-av" :: rest -> parseArgs rest ([ AudioIn; VideoRegion ] @ parsed)
     | "-d" :: path :: rest -> parseArgs rest (OutputDir path :: parsed)
+    | "-T" :: rest -> parseArgs rest (NoTrim :: parsed)
     | [ name ] -> parseArgs [] (OutputFile name :: parsed)
     | head :: rest ->
         eprintfn $"Ignoring unrecognized option: {head}"
@@ -164,6 +167,7 @@ OPTIONS:
     -d                set output directory
     -a                pick an audio source
     -v                pick a video region
+    -T                disable trimming last second
 """
 
 let buildOptions args =
@@ -176,6 +180,7 @@ let buildOptions args =
                     videoRegion = selectVideoRegion () }
             | OutputDir path -> { opts with outputDir = path }
             | OutputFile name -> { opts with outputFile = name }
+            | NoTrim -> { opts with trimLastSecond = false }
             | Help ->
                 eprintfn "%s" help
                 exit 0)
@@ -185,7 +190,8 @@ let buildOptions args =
                 [| Environment.GetFolderPath Environment.SpecialFolder.UserProfile
                    "recordings" |]
           videoRegion = None
-          audioIn = None }
+          audioIn = None
+          trimLastSecond = true }
         args
 
 let cliArgs = Environment.GetCommandLineArgs() |> Array.toList |> List.tail

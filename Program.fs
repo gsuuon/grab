@@ -94,19 +94,22 @@ let doRecord (options: ExecOptions) =
 
     eprintfn "✂️"
 
-    let fflog = proc "ffmpeg" $"-i {tmpFilePath}" |> wait <!> Stderr |> readBlock
+    if options.trimLastSecond then
+        let fflog = proc "ffmpeg" $"-i {tmpFilePath}" |> wait <!> Stderr |> readBlock
 
-    let matches = Regex.Match(fflog, ".+Duration: ([0-9:.]+)")
+        let matches = Regex.Match(fflog, ".+Duration: ([0-9:.]+)")
 
-    let duration = TimeSpan.Parse(matches.Groups[1].Value)
+        let duration = TimeSpan.Parse(matches.Groups[1].Value)
 
-    let trimMs = 1000
-    let endtime = duration - TimeSpan.FromMilliseconds(trimMs)
-    eprintfn $"Trimming last {trimMs}ms"
+        let trimMs = 1000
+        let endtime = duration - TimeSpan.FromMilliseconds(trimMs)
+        eprintfn $"Trimming last {trimMs}ms"
 
-    proc "ffmpeg" $"-i {tmpFilePath} -to {endtime} -y -c copy {outputFilePath}"
-    |> exec
-
+        proc "ffmpeg" $"-i {tmpFilePath} -to {endtime} -y -c copy {outputFilePath}"
+        |> exec
+    else
+        File.Move(tmpFilePath, outputFilePath)
+        
     printfn "%s" outputFilePath
 
 let selectVideoRegion () =

@@ -108,8 +108,8 @@ let doRecord (options: ExecOptions) =
         proc "ffmpeg" $"-i {tmpFilePath} -to {endtime} -y -c copy {outputFilePath}"
         |> exec
     else
-        File.Move(tmpFilePath, outputFilePath)
-        
+        File.Move(tmpFilePath, outputFilePath, true)
+
     printfn "%s" outputFilePath
 
 let selectVideoRegion () =

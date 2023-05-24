@@ -144,17 +144,35 @@ type CLIArg =
     | Help
     | NoTrim
 
-let rec parseArgs args parsed =
+
+let parseSwitches parsed switch =
+    let parseSwitch =
+        function
+        | 'a' -> Some AudioIn
+        | 'h' -> Some Help
+        | 'v' -> Some VideoRegion
+        | 'T' -> Some NoTrim
+        | _ -> None
+
+    match parseSwitch switch with
+    | Some x -> x :: parsed
+    | None ->
+        eprintfn "Unknown switch %c" switch
+        parsed
+
+let rec parseArgs (args: string list) parsed =
     match args with
     | [] -> parsed
-    | "-h" :: rest
-    | "--help" :: rest -> [ Help ]
-    | "-a" :: rest -> parseArgs rest (AudioIn :: parsed)
-    | "-v" :: rest -> parseArgs rest (VideoRegion :: parsed)
-    | "-va" :: rest
-    | "-av" :: rest -> parseArgs rest ([ AudioIn; VideoRegion ] @ parsed)
     | "-d" :: path :: rest -> parseArgs rest (OutputDir path :: parsed)
-    | "-T" :: rest -> parseArgs rest (NoTrim :: parsed)
+    | "--help" :: rest -> [ Help ]
+    | switches :: rest when switches.StartsWith("-") ->
+        let parsedSwitches =
+            switches.Substring(1)
+            |> Seq.fold
+                parseSwitches
+                parsed
+
+        parseArgs rest parsedSwitches
     | [ name ] -> parseArgs [] (OutputFile name :: parsed)
     | head :: rest ->
         eprintfn $"Ignoring unrecognized option: {head}"

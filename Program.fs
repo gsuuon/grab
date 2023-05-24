@@ -179,13 +179,13 @@ let rec parseArgs (args: string list) parsed =
         parseArgs rest parsed
 
 let help =
-    """USAGE: grab [-d <path>] [-a] [-v] [<file>]
+    """USAGE: grab [options] [<file>]
 
 OUTPUT:
     [<file>]          set output filename (defaults to 'output')
 
 OPTIONS:
-    -d                set output directory
+    -d <path>         set output directory (defaults to '~/recordings')
     -a                pick an audio source
     -v                pick a video region
     -T                disable trimming last second

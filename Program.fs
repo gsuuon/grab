@@ -19,7 +19,15 @@ let exec =
     run ignore ignore
 #endif
 
-setupConsole ()
+module ConsoleSetup =
+    // Display emojis
+    Console.OutputEncoding <- Text.Encoding.UTF8
+
+    let dontDie = ConsoleCancelEventHandler (fun _ e -> e.Cancel <- true)
+
+    let passthroughCtrlC () = Console.CancelKeyPress.AddHandler dontDie
+
+    let interruptOnCtrlC () = Console.CancelKeyPress.RemoveHandler dontDie
 
 type Region = { width: int; height: int }
 
@@ -62,6 +70,8 @@ let doRecord (options: ExecOptions) =
 
         if path.EndsWith ".mp4" then path else path + ".mp4"
 
+    ConsoleSetup.interruptOnCtrlC()
+
     eprintfn "Recording in 3.."
     sleep 1000
     eprintfn "2.."
@@ -69,6 +79,8 @@ let doRecord (options: ExecOptions) =
     eprintfn "1.."
     sleep 1000
     eprintfn "🎬 (ctrl-c to stop)"
+
+    ConsoleSetup.passthroughCtrlC()
 
     ffmpeg
         [ Nostdin
@@ -216,5 +228,7 @@ let buildOptions args =
         args
 
 let cliArgs = Environment.GetCommandLineArgs() |> Array.toList |> List.tail
+
+ConsoleSetup.passthroughCtrlC ()
 
 parseArgs cliArgs [] |> buildOptions |> doRecord

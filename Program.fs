@@ -83,9 +83,9 @@ let doRecord (options: ExecOptions) =
     ConsoleSetup.passthroughCtrlC()
 
     ffmpeg
-        [ 
+        [ Nostdin
+          RawArg "-use_wallclock_as_timestamps 1"
           RawArg "-thread_queue_size 128"
-          Nostdin
           Gdigrab
               { framerate = 30
                 frame =

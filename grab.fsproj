@@ -27,11 +27,15 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
 
+  <!-- <ItemGroup> -->
+  <!--     <ProjectReference Include="../Command.Program.Ffmpeg/Command.Program.Ffmpeg.fsproj" /> -->
+  <!-- </ItemGroup> -->
+
   <ItemGroup>
     <PackageReference Include="Gsuuon.Command" Version="0.1.5" />
     <PackageReference Include="Gsuuon.Console" Version="0.1.5" />
     <PackageReference Include="Gsuuon.Command.Utility" Version="0.0.1" />
-    <PackageReference Include="Gsuuon.Program.Ffmpeg" Version="0.0.3" />
+    <PackageReference Include="Gsuuon.Program.Ffmpeg" Version="0.0.4" />
   </ItemGroup>
 
 </Project>

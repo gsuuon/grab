@@ -14,7 +14,7 @@ let run out err (p: Proc) =
 
 let exec =
 #if DEBUG
-    run (printf "%s") (eprintf "%s") 
+    run (printf "%s") (eprintf "%s")
 #else
     run ignore ignore
 #endif
@@ -23,11 +23,13 @@ module ConsoleSetup =
     // Display emojis
     Console.OutputEncoding <- Text.Encoding.UTF8
 
-    let dontDie = ConsoleCancelEventHandler (fun _ e -> e.Cancel <- true)
+    let dontDie = ConsoleCancelEventHandler(fun _ e -> e.Cancel <- true)
 
-    let passthroughCtrlC () = Console.CancelKeyPress.AddHandler dontDie
+    let passthroughCtrlC () =
+        Console.CancelKeyPress.AddHandler dontDie
 
-    let interruptOnCtrlC () = Console.CancelKeyPress.RemoveHandler dontDie
+    let interruptOnCtrlC () =
+        Console.CancelKeyPress.RemoveHandler dontDie
 
 type Region = { width: int; height: int }
 
@@ -71,7 +73,7 @@ let doRecord (options: ExecOptions) =
 
         if path.EndsWith ".mp4" then path else path + ".mp4"
 
-    ConsoleSetup.interruptOnCtrlC()
+    ConsoleSetup.interruptOnCtrlC ()
 
     eprintfn "Recording in 3.."
     sleep 1000
@@ -81,7 +83,8 @@ let doRecord (options: ExecOptions) =
     sleep 1000
     eprintfn "🎬 (ctrl-c to stop)"
 
-    ConsoleSetup.passthroughCtrlC()
+    ConsoleSetup.passthroughCtrlC ()
+
     let small = """-filter_complex "scale=-2:800:flags=lanczos" -c:v libx264 -preset fast -crf 26 -pix_fmt yuv420p -r 30 -y"""
 
     ffmpeg
@@ -151,7 +154,7 @@ let selectVideoRegion () =
     |> choose "Pick a region to capture or esc for entire desktop" 0
 
 let selectAudioIn () =
-    dshowDevicesAudio()
+    dshowDevicesAudio ()
     |> Array.choose (fun x -> if x.``type`` = "audio" then Some x.name else None)
     |> Array.toList
     |> choose "Choose audio input (esc or ctrl-c for none):\n" 0
@@ -188,11 +191,7 @@ let rec parseArgs (args: string list) parsed =
     | "-d" :: path :: rest -> parseArgs rest (OutputDir path :: parsed)
     | "--help" :: rest -> [ Help ]
     | switches :: rest when switches.StartsWith("-") ->
-        let parsedSwitches =
-            switches.Substring(1)
-            |> Seq.fold
-                parseSwitches
-                parsed
+        let parsedSwitches = switches.Substring(1) |> Seq.fold parseSwitches parsed
 
         parseArgs rest parsedSwitches
     | [ name ] -> parseArgs [] (OutputFile name :: parsed)

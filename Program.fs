@@ -54,7 +54,8 @@ type ExecOptions =
       outputDir: string
       videoRegion: Region option
       audioIn: string option
-      trimLastSecond: bool }
+      trimLastSecond: bool
+      fastStart: bool }
 
 let doRecord (options: ExecOptions) =
     Directory.CreateDirectory options.outputDir |> ignore
@@ -81,11 +82,12 @@ let doRecord (options: ExecOptions) =
     eprintfn "🎬 (ctrl-c to stop)"
 
     ConsoleSetup.passthroughCtrlC()
+    let small = """-filter_complex "scale=-2:800:flags=lanczos" -c:v libx264 -preset fast -crf 26 -pix_fmt yuv420p -r 30 -y"""
 
     ffmpeg
         [ Nostdin
           RawArg "-use_wallclock_as_timestamps 1"
-          RawArg "-thread_queue_size 128"
+          RawArg "-thread_queue_size 64"
           Gdigrab
               { framerate = 30
                 frame =
@@ -102,8 +104,14 @@ let doRecord (options: ExecOptions) =
           | Some source -> Dshow(Audio source)
           | None -> ()
 
-          RawArg Preset.Gdigrab.small ]
-        tmpFilePath
+          RawArg small
+
+          if options.fastStart then
+              RawArg """-movflags +faststart""" ]
+        (if options.trimLastSecond then
+             tmpFilePath
+         else
+             outputFilePath)
     |> exec
 
     eprintfn "✂️"
@@ -121,8 +129,6 @@ let doRecord (options: ExecOptions) =
 
         proc "ffmpeg" $"-i {tmpFilePath} -to {endtime} -y -c copy {outputFilePath}"
         |> exec
-    else
-        File.Move(tmpFilePath, outputFilePath, true)
 
     printfn "%s" outputFilePath
 
@@ -157,6 +163,7 @@ type CLIArg =
     | OutputFile of name: string
     | Help
     | NoTrim
+    | NoFastStart
 
 
 let parseSwitches parsed switch =
@@ -166,6 +173,7 @@ let parseSwitches parsed switch =
         | 'h' -> Some Help
         | 'v' -> Some VideoRegion
         | 'T' -> Some NoTrim
+        | 'W' -> Some NoFastStart
         | _ -> None
 
     match parseSwitch switch with
@@ -203,6 +211,7 @@ OPTIONS:
     -a                pick an audio source
     -v                pick a video region
     -T                disable trimming last second
+    -W                disable web faststart
 """
 
 let buildOptions args =
@@ -216,6 +225,7 @@ let buildOptions args =
             | OutputDir path -> { opts with outputDir = path }
             | OutputFile name -> { opts with outputFile = name }
             | NoTrim -> { opts with trimLastSecond = false }
+            | NoFastStart -> { opts with fastStart = false }
             | Help ->
                 eprintfn "%s" help
                 exit 0)
@@ -226,7 +236,8 @@ let buildOptions args =
                    "recordings" |]
           videoRegion = None
           audioIn = None
-          trimLastSecond = true }
+          trimLastSecond = true
+          fastStart = true }
         args
 
 let cliArgs = Environment.GetCommandLineArgs() |> Array.toList |> List.tail

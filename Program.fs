@@ -56,6 +56,7 @@ type ExecOptions =
       outputDir: string
       videoRegion: Region option
       audioIn: string option
+      audioDelay: float option
       trimLastSecond: bool
       fastStart: bool }
 
@@ -105,6 +106,10 @@ let doRecord (options: ExecOptions) =
 
           match options.audioIn with
           | Some source -> Dshow(Audio source)
+          | None -> ()
+
+          match options.audioDelay with
+          | Some amt -> RawArg (sprintf "-af asetpts=PTS+%f/TB" amt)
           | None -> ()
 
           RawArg small
@@ -161,6 +166,7 @@ let selectAudioIn () =
 
 type CLIArg =
     | AudioIn
+    | AudioDelay of seconds: float
     | VideoRegion
     | OutputDir of path: string
     | OutputFile of name: string
@@ -189,6 +195,16 @@ let rec parseArgs (args: string list) parsed =
     match args with
     | [] -> parsed
     | "-d" :: path :: rest -> parseArgs rest (OutputDir path :: parsed)
+    | "--delay" :: delay :: rest ->
+        let parsed' =
+            try
+                AudioDelay (float delay) :: parsed
+            with
+            | _ ->
+                eprintfn "Ignoring failed to parse second: %s" delay
+                parsed
+
+        parseArgs rest parsed'
     | "--help" :: rest -> [ Help ]
     | switches :: rest when switches.StartsWith("-") ->
         let parsedSwitches = switches.Substring(1) |> Seq.fold parseSwitches parsed
@@ -208,6 +224,7 @@ OUTPUT:
 OPTIONS:
     -d <path>         set output directory (defaults to '~/recordings')
     -a                pick an audio source
+    --delay <float>   audio delay
     -v                pick a video region
     -T                disable trimming last second
     -W                disable web faststart
@@ -218,6 +235,7 @@ let buildOptions args =
         (fun opts arg ->
             match arg with
             | AudioIn -> { opts with audioIn = selectAudioIn () }
+            | AudioDelay amt -> { opts with audioDelay = Some amt }
             | VideoRegion ->
                 { opts with
                     videoRegion = selectVideoRegion () }
@@ -235,6 +253,7 @@ let buildOptions args =
                    "recordings" |]
           videoRegion = None
           audioIn = None
+          audioDelay = None
           trimLastSecond = true
           fastStart = true }
         args

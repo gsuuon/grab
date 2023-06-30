@@ -36,7 +36,7 @@ type Region = { width: int; height: int }
 let lines (x: string) = x.Split "\n"
 
 let dshowDevicesAudio () =
-    proc "ffmpeg" "-list_devices true -f dshow -i dummy" |> wait <!> Stderr
+    proc "ffmpeg" "-list_devices true -f dshow -i dummy" <!> Stderr
     |> readBlock
     |> lines
     |> Array.choose (fun l ->

@@ -1,5 +1,6 @@
 open System
 open System.IO
+open System.Windows.Forms
 open System.Text.RegularExpressions
 
 open Gsuuon.Command
@@ -31,7 +32,12 @@ module ConsoleSetup =
     let interruptOnCtrlC () =
         Console.CancelKeyPress.RemoveHandler dontDie
 
-type Region = { width: int; height: int }
+type Region = {
+    width: int
+    height: int
+    offsetX: int
+    offsetY: int
+}
 
 let lines (x: string) = x.Split "\n"
 
@@ -141,20 +147,13 @@ let doRecord (options: ExecOptions) =
     printfn "%s" outputFilePath
 
 let selectVideoRegion () =
-    proc "wmic" "path Win32_VideoController get CurrentHorizontalResolution,CurrentVerticalResolution"
-    |> wait
-    <!> Stdout
-    |> readBlock
-    |> lines
-    |> Array.choose (fun x ->
-        let m = Regex.Match(x, "(?<width>\d+)\s+(?<height>\d+)")
-
-        if m.Success then
-            Some
-                { width = Int32.Parse m.Groups["width"].Value
-                  height = Int32.Parse m.Groups["height"].Value }
-        else
-            None)
+    Screen.AllScreens
+    |> Array.map (fun x -> {
+            width = x.Bounds.Width
+            height = x.Bounds.Height
+            offsetX = x.Bounds.X
+            offsetY = x.Bounds.Y
+        })
     |> Array.toList
     |> choose "Pick a region to capture or esc for entire desktop" 0
 

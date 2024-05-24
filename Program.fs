@@ -57,16 +57,15 @@ let dshowDevicesAudio () =
         else
             None)
 
-type ExecOptions =
+type Options =
     { outputFile: string
       outputDir: string
       videoRegion: Region option
       audioIn: string option
       audioDelay: float option
-      trimLastSecond: bool
-      fastStart: bool }
+      trimLastSecond: bool }
 
-let doRecord (options: ExecOptions) =
+let doRecord (options: Options) =
     Directory.CreateDirectory options.outputDir |> ignore
 
     // We write a temporary recording so we can trim it
@@ -119,9 +118,8 @@ let doRecord (options: ExecOptions) =
           | None -> ()
 
           RawArg small
+          RawArg """-movflags +faststart""" ]
 
-          if options.fastStart then
-              RawArg """-movflags +faststart""" ]
         (if options.trimLastSecond then
              tmpFilePath
          else
@@ -146,73 +144,23 @@ let doRecord (options: ExecOptions) =
 
     printfn "%s" outputFilePath
 
-let selectVideoRegion () =
-    Screen.AllScreens
-    |> Array.map (fun x -> {
-            width = x.Bounds.Width
-            height = x.Bounds.Height
-            offsetX = x.Bounds.X
-            offsetY = x.Bounds.Y
-        })
-    |> Array.toList
-    |> choose "Pick a region to capture or esc for entire desktop" 0
+module Pick =
+    let videoRegion () =
+        Screen.AllScreens
+        |> Array.map (fun x -> {
+                width = x.Bounds.Width
+                height = x.Bounds.Height
+                offsetX = x.Bounds.X
+                offsetY = x.Bounds.Y
+            })
+        |> Array.toList
+        |> choose "Pick a region to capture or esc for entire desktop" 0
 
-let selectAudioIn () =
-    dshowDevicesAudio ()
-    |> Array.choose (fun x -> if x.``type`` = "audio" then Some x.name else None)
-    |> Array.toList
-    |> choose "Choose audio input (esc or ctrl-c for none):\n" 0
-
-type CLIArg =
-    | AudioIn
-    | AudioDelay of seconds: float
-    | VideoRegion
-    | OutputDir of path: string
-    | OutputFile of name: string
-    | Help
-    | NoTrim
-    | NoFastStart
-
-
-let parseSwitches parsed switch =
-    let parseSwitch =
-        function
-        | 'a' -> Some AudioIn
-        | 'h' -> Some Help
-        | 'v' -> Some VideoRegion
-        | 'T' -> Some NoTrim
-        | 'W' -> Some NoFastStart
-        | _ -> None
-
-    match parseSwitch switch with
-    | Some x -> x :: parsed
-    | None ->
-        eprintfn "Unknown switch %c" switch
-        parsed
-
-let rec parseArgs (args: string list) parsed =
-    match args with
-    | [] -> parsed
-    | "-d" :: path :: rest -> parseArgs rest (OutputDir path :: parsed)
-    | "--delay" :: delay :: rest ->
-        let parsed' =
-            try
-                AudioDelay (float delay) :: parsed
-            with
-            | _ ->
-                eprintfn "Ignoring failed to parse second: %s" delay
-                parsed
-
-        parseArgs rest parsed'
-    | "--help" :: rest -> [ Help ]
-    | switches :: rest when switches.StartsWith("-") ->
-        let parsedSwitches = switches.Substring(1) |> Seq.fold parseSwitches parsed
-
-        parseArgs rest parsedSwitches
-    | [ name ] -> parseArgs [] (OutputFile name :: parsed)
-    | head :: rest ->
-        eprintfn $"Ignoring unrecognized option: {head}"
-        parseArgs rest parsed
+    let audioIn () =
+        dshowDevicesAudio ()
+        |> Array.choose (fun x -> if x.``type`` = "audio" then Some x.name else None)
+        |> Array.toList
+        |> choose "Choose audio input (esc or ctrl-c for none):\n" 0
 
 let help =
     """USAGE: grab [options] [<file>]
@@ -226,25 +174,54 @@ OPTIONS:
     --delay <float>   audio delay
     -v                pick a video region
     -T                disable trimming last second
-    -W                disable web faststart
 """
 
-let buildOptions args =
-    List.fold
-        (fun opts arg ->
-            match arg with
-            | AudioIn -> { opts with audioIn = selectAudioIn () }
-            | AudioDelay amt -> { opts with audioDelay = Some amt }
-            | VideoRegion ->
-                { opts with
-                    videoRegion = selectVideoRegion () }
-            | OutputDir path -> { opts with outputDir = path }
-            | OutputFile name -> { opts with outputFile = name }
-            | NoTrim -> { opts with trimLastSecond = false }
-            | NoFastStart -> { opts with fastStart = false }
-            | Help ->
-                eprintfn "%s" help
-                exit 0)
+let showHelpAndExit =
+    eprintf "%s" help
+    exit 0
+
+let cliArgs = Environment.GetCommandLineArgs() |> Array.toList |> List.tail
+
+let parseOptions args =
+    let parseSwitch (options: Options) switch =
+        match switch with
+        | 'a' -> { options with audioIn = Pick.audioIn () }
+        | 'h' ->
+            showHelpAndExit
+        | 'v' -> { options with videoRegion = Pick.videoRegion () }
+        | 'T' -> { options with trimLastSecond = false }
+        | _ ->
+            eprintfn "Unknown switch %c" switch
+            options
+
+    let rec parse (args: string list) (options: Options) =
+        match args with
+        | [] -> options
+        | "-d" :: path :: rest -> parse rest { options with outputDir = path }
+        | "--delay" :: delay :: rest ->
+            let options' =
+                try
+                    { options with audioDelay = Some(float delay) }
+                with
+                | _ ->
+                    eprintfn "Ignoring failed to parse second: %s" delay
+                    options
+
+            parse rest options'
+        | "--help" :: rest ->
+            showHelpAndExit
+        | switches :: rest when switches.StartsWith("-") ->
+            let parsedSwitches = switches.Substring(1) |> Seq.fold parseSwitch options
+
+            parse rest parsedSwitches
+        | [ name ] -> parse [] {
+                options with outputFile = name
+            }
+        | head :: rest ->
+            eprintfn $"Ignoring unrecognized option: {head}"
+            parse rest options
+
+    parse args
         { outputFile = "output.mp4"
           outputDir =
             Path.Combine
@@ -253,12 +230,8 @@ let buildOptions args =
           videoRegion = None
           audioIn = None
           audioDelay = None
-          trimLastSecond = true
-          fastStart = true }
-        args
-
-let cliArgs = Environment.GetCommandLineArgs() |> Array.toList |> List.tail
+          trimLastSecond = true }
 
 ConsoleSetup.passthroughCtrlC ()
 
-parseArgs cliArgs [] |> buildOptions |> doRecord
+parseOptions cliArgs |> doRecord

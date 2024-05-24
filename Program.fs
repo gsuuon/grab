@@ -6,7 +6,7 @@ open System.Text.RegularExpressions
 open Gsuuon.Command
 open Gsuuon.Command.Utility
 open Gsuuon.Console.Choose
-open Gsuuon.Command.Program.Ffmpeg
+open Gsuuon.Tool.Grab.Ffmpeg
 
 let run out err (p: Proc) =
     p <!> Stdout |> consume out

@@ -25,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="Ffmpeg.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

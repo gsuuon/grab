@@ -11,6 +11,8 @@ https://user-images.githubusercontent.com/6422188/233815912-65c4a68e-57d0-4f51-8
 ## Use
 Outputs mp4 files to `~/recordings`. Optional name for first arg, defaults to `~/recordings/output.mp4`. Make sure `ffmpeg` is available in path and you're on Windows (TODO xplat).
 
+Certain options open interactive selections. `-v` lets you pick which screen to use, and `-a` lets you pick the audio-in device. Defaults to primary screen or no audio input if missing.
+
 ### From repo
 ```
 dotnet run -- my_recording

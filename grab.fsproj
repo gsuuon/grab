@@ -30,14 +30,30 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
 
-  <!-- <ItemGroup> -->
-  <!--     <ProjectReference Include="../Command.Program.Ffmpeg/Command.Program.Ffmpeg.fsproj" /> -->
-  <!-- </ItemGroup> -->
-
   <ItemGroup>
     <PackageReference Include="Gsuuon.Command" Version="0.1.5" />
     <PackageReference Include="Gsuuon.Console" Version="0.1.5" />
     <PackageReference Include="Gsuuon.Command.Utility" Version="0.0.1" />
   </ItemGroup>
+
+  <!--
+      dotnet PackAsTool is busted since dotnet 5.0 if using windowsforms or wpf (though I definitely had it working with dotnet 7). Not sure the right way to do this, I don't like bringing in windowsforms just to get screen resolution and offsets but i've already spent way too long trying to find another way and there doesn't seem to be one. maybe wmi/cim would work, but i couldn't find if it can report the offsets necessary for ffmpeg to record the screen correctly.
+
+      I think this workaround basically lies to packastool when it does its check. doesn't seem to have any impact on if it works or not at runtime.
+
+      see https://github.com/dotnet/sdk/issues/16361 and https://github.com/dotnet/sdk/issues/12055
+  -->
+  <Target Name="NETSDK1146Workaround" BeforeTargets="_PackToolValidation">
+    <PropertyGroup>
+      <TargetPlatformIdentifier></TargetPlatformIdentifier>
+      <TargetPlatformMoniker></TargetPlatformMoniker>
+    </PropertyGroup>
+  </Target>
+
+  <!-- <Target Name="NETSDK1146Workaround" AfterTargets="_PackToolValidation" BeforeTargets="PackTool"> -->
+  <!--   <PropertyGroup> -->
+  <!--     <TargetPlatformIdentifier>Windows</TargetPlatformIdentifier> -->
+  <!--   </PropertyGroup> -->
+  <!-- </Target> -->
 
 </Project>

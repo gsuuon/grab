@@ -191,7 +191,7 @@ OUTPUT:
 OPTIONS:
     -d <path>         set output directory (defaults to '~/recordings')
     -a                pick an audio source (no audio without)
-    --delay <float>   audio delay
+    --delay <float>   audio delay in seconds
     -v                pick a video region
     -m                output mp4 file (defaults to webm without)
     -T                disable trimming last second
